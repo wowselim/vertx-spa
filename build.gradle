@@ -1,0 +1,88 @@
+plugins {
+  id "org.jetbrains.kotlin.jvm" version "1.3.72"
+  id 'application'
+  id 'com.github.johnrengelman.shadow' version '5.2.0'
+  id "com.github.node-gradle.node" version "2.2.4"
+}
+
+group = 'co.selim'
+version = '1.0.0-SNAPSHOT'
+
+repositories {
+  mavenCentral()
+  jcenter()
+}
+
+ext {
+  kotlinVersion = '1.3.72'
+  vertxVersion = '3.9.1'
+  junitJupiterEngineVersion = '5.6.0'
+}
+
+application {
+  mainClassName = 'io.vertx.core.Launcher'
+}
+
+def mainVerticleName = 'co.selim.vertx_spa.MainVerticle'
+def watchForChange = 'src/**/*'
+def doOnChange = './gradlew classes'
+
+dependencies {
+  implementation "io.vertx:vertx-web:$vertxVersion"
+  implementation "io.vertx:vertx-lang-kotlin:$vertxVersion"
+  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+  testImplementation "io.vertx:vertx-junit5:$vertxVersion"
+  testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitJupiterEngineVersion"
+  testImplementation "org.junit.jupiter:junit-jupiter-api:$junitJupiterEngineVersion"
+}
+
+compileKotlin {
+  kotlinOptions.jvmTarget = '1.8'
+}
+
+compileTestKotlin {
+  kotlinOptions.jvmTarget = '1.8'
+}
+
+shadowJar {
+  classifier = 'fat'
+  manifest {
+    attributes 'Main-Verticle': mainVerticleName
+  }
+  mergeServiceFiles {
+    include 'META-INF/services/io.vertx.core.spi.VerticleFactory'
+  }
+}
+
+test {
+  useJUnitPlatform()
+  testLogging {
+    events 'PASSED', 'FAILED', 'SKIPPED'
+  }
+}
+
+run {
+  args = ['run', mainVerticleName, "--redeploy=$watchForChange", "--launcher-class=$mainClassName", "--on-redeploy=$doOnChange"]
+}
+
+node {
+  version = "12.18.1"
+  npmVersion = "6.14.5"
+  download = true
+  nodeModulesDir = file("src/main/frontend")
+}
+
+task buildFrontend(type: YarnTask) {
+  args = ['build']
+  dependsOn yarn
+}
+
+task copyToWebRoot(type: Copy) {
+  from "src/main/frontend/dist"
+  destinationDir = file("${buildDir}/classes/kotlin/main/webroot")
+  dependsOn buildFrontend
+}
+
+processResources {
+  dependsOn copyToWebRoot
+}
