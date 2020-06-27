@@ -77,10 +77,17 @@ task buildFrontend(type: YarnTask) {
   dependsOn yarn
 }
 
+def webroot = "${buildDir}/classes/kotlin/main/webroot"
+
+task cleanWebRoot {
+  project.delete(webroot)
+  dependsOn buildFrontend
+}
+
 task copyToWebRoot(type: Copy) {
   from "src/main/frontend/dist"
-  destinationDir = file("${buildDir}/classes/kotlin/main/webroot")
-  dependsOn buildFrontend
+  destinationDir = file(webroot)
+  dependsOn cleanWebRoot
 }
 
 processResources {
